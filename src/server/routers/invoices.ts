@@ -1,0 +1,139 @@
+import { z } from "zod";
+import { createTRPCRouter, tenantProcedure } from "@/server/trpc/trpc";
+
+export const invoicesRouter = createTRPCRouter({
+  list: tenantProcedure
+    .input(
+      z.object({
+        status: z.enum(["PENDING","OCR_PROCESSING","OCR_COMPLETE","NEEDS_REVIEW","APPROVED","REJECTED"] as const).optional(),
+        supplierId: z.string().optional(),
+        from: z.date().optional(),
+        to: z.date().optional(),
+        limit: z.number().default(50),
+        offset: z.number().default(0),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const where = {
+        tenantId: ctx.tenant.id,
+        isDeleted: false,
+        ...(input.status && { status: input.status }),
+        ...(input.supplierId && { supplierId: input.supplierId }),
+        ...(input.from || input.to
+          ? {
+              invoiceDate: {
+                ...(input.from && { gte: input.from }),
+                ...(input.to && { lte: input.to }),
+              },
+            }
+          : {}),
+      };
+
+      const [items, total] = await Promise.all([
+        ctx.prisma.purchaseInvoice.findMany({
+          where,
+          include: { supplier: true, lineItems: true },
+          orderBy: { createdAt: "desc" },
+          take: input.limit,
+          skip: input.offset,
+        }),
+        ctx.prisma.purchaseInvoice.count({ where }),
+      ]);
+
+      return { items, total };
+    }),
+
+  getById: tenantProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.prisma.purchaseInvoice.findFirst({
+        where: { id: input.id, tenantId: ctx.tenant.id, isDeleted: false },
+        include: { supplier: true, lineItems: true },
+      });
+    }),
+
+  create: tenantProcedure
+    .input(
+      z.object({
+        supplierName: z.string().optional(),
+        supplierId: z.string().optional(),
+        invoiceNumber: z.string().optional(),
+        invoiceDate: z.date().optional(),
+        amount: z.number().positive().optional(),
+        vat: z.number().min(0).optional(),
+        totalAmount: z.number().positive().optional(),
+        currency: z.string().default("SAR"),
+        category: z.string().optional(),
+        fileUrl: z.string().optional(),
+        fileName: z.string().optional(),
+        fileType: z.string().optional(),
+        notes: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.purchaseInvoice.create({
+        data: { tenantId: ctx.tenant.id, ...input, status: "PENDING" },
+      });
+    }),
+
+  update: tenantProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        supplierName: z.string().optional(),
+        supplierId: z.string().optional(),
+        invoiceNumber: z.string().optional(),
+        invoiceDate: z.date().optional(),
+        amount: z.number().positive().optional(),
+        vat: z.number().min(0).optional(),
+        totalAmount: z.number().positive().optional(),
+        category: z.string().optional(),
+        status: z.enum(["PENDING","OCR_PROCESSING","OCR_COMPLETE","NEEDS_REVIEW","APPROVED","REJECTED"]).optional(),
+        notes: z.string().optional(),
+        ocrOutput: z.record(z.string(), z.unknown()).optional(),
+        ocrConfidence: z.number().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      return ctx.prisma.purchaseInvoice.update({
+        where: { id, tenantId: ctx.tenant.id },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data: data as any,
+      });
+    }),
+
+  delete: tenantProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.purchaseInvoice.update({
+        where: { id: input.id, tenantId: ctx.tenant.id },
+        data: { isDeleted: true },
+      });
+    }),
+
+  summary: tenantProcedure
+    .input(z.object({ from: z.date(), to: z.date() }))
+    .query(async ({ ctx, input }) => {
+      const invoices = await ctx.prisma.purchaseInvoice.findMany({
+        where: {
+          tenantId: ctx.tenant.id,
+          isDeleted: false,
+          status: "APPROVED",
+          invoiceDate: { gte: input.from, lte: input.to },
+        },
+      });
+
+      const total = invoices.reduce((sum, i) => sum + Number(i.totalAmount ?? 0), 0);
+      const byCategory = invoices.reduce(
+        (acc, i) => {
+          const cat = i.category ?? "Other";
+          acc[cat] = (acc[cat] ?? 0) + Number(i.totalAmount ?? 0);
+          return acc;
+        },
+        {} as Record<string, number>
+      );
+
+      return { total, byCategory, count: invoices.length };
+    }),
+});

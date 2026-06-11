@@ -1,0 +1,320 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Tenant ───────────────────────────────────────────────────────────────────
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users             UserTenant[]
+  restaurant        Restaurant?
+  expenses          Expense[]
+  purchaseInvoices  PurchaseInvoice[]
+  suppliers         Supplier[]
+  insights          Insight[]
+  conversations     Conversation[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  salesTransactions SalesTransaction[]
+  branches          Branch[]
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+model User {
+  id         String   @id @default(cuid())
+  supabaseId String   @unique
+  email      String   @unique
+  name       String?
+  avatarUrl  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenants       UserTenant[]
+  conversations Conversation[]
+  auditLogs     AuditLog[]
+}
+
+// ─── User ↔ Tenant ────────────────────────────────────────────────────────────
+model UserTenant {
+  id       String   @id @default(cuid())
+  userId   String
+  tenantId String
+  role     UserRole @default(OWNER)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId])
+}
+
+enum UserRole {
+  OWNER
+  ACCOUNTANT
+  BRANCH_MANAGER
+  FINANCE_MANAGER
+}
+
+// ─── Restaurant Profile ───────────────────────────────────────────────────────
+model Restaurant {
+  id               String    @id @default(cuid())
+  tenantId         String    @unique
+  name             String
+  nameAr           String?
+  crNumber         String?
+  vatNumber        String?
+  city             String?
+  timezone         String    @default("Asia/Riyadh")
+  currency         String    @default("SAR")
+  logoUrl          String?
+  foodicsConnected Boolean   @default(false)
+  foodicsToken     String?
+  foodicsAccountId String?
+  lastSyncAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branches Branch[]
+}
+
+// ─── Branch ───────────────────────────────────────────────────────────────────
+model Branch {
+  id           String   @id @default(cuid())
+  tenantId     String
+  restaurantId String?
+  foodicsId    String?
+  name         String
+  nameAr       String?
+  city         String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  restaurant        Restaurant?        @relation(fields: [restaurantId], references: [id])
+  salesTransactions SalesTransaction[]
+
+  @@unique([tenantId, foodicsId])
+}
+
+// ─── Sales Transaction (Foodics sync) ────────────────────────────────────────
+model SalesTransaction {
+  id           String   @id @default(cuid())
+  tenantId     String
+  branchId     String?
+  foodicsId    String?
+  orderNumber  String?
+  amount       Decimal  @db.Decimal(12, 2)
+  tax          Decimal  @default(0) @db.Decimal(12, 2)
+  discount     Decimal  @default(0) @db.Decimal(12, 2)
+  netAmount    Decimal  @db.Decimal(12, 2)
+  status       String   @default("completed")
+  source       String   @default("foodics")
+  transactedAt DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  @@unique([tenantId, foodicsId])
+  @@index([tenantId, transactedAt])
+}
+
+// ─── Supplier ─────────────────────────────────────────────────────────────────
+model Supplier {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  phone     String?
+  email     String?
+  vatNumber String?
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoices PurchaseInvoice[]
+
+  @@index([tenantId])
+}
+
+// ─── Purchase Invoice ─────────────────────────────────────────────────────────
+model PurchaseInvoice {
+  id            String        @id @default(cuid())
+  tenantId      String
+  supplierId    String?
+  supplierName  String?
+  invoiceNumber String?
+  invoiceDate   DateTime?
+  amount        Decimal?      @db.Decimal(12, 2)
+  vat           Decimal?      @default(0) @db.Decimal(12, 2)
+  totalAmount   Decimal?      @db.Decimal(12, 2)
+  currency      String        @default("SAR")
+  category      String?
+  status        InvoiceStatus @default(PENDING)
+  fileUrl       String?
+  fileName      String?
+  fileType      String?
+  ocrOutput     Json?
+  ocrConfidence Float?
+  notes         String?
+  isDeleted     Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier  Supplier?         @relation(fields: [supplierId], references: [id])
+  lineItems InvoiceLineItem[]
+
+  @@index([tenantId, invoiceDate])
+}
+
+enum InvoiceStatus {
+  PENDING
+  OCR_PROCESSING
+  OCR_COMPLETE
+  NEEDS_REVIEW
+  APPROVED
+  REJECTED
+}
+
+model InvoiceLineItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Decimal @db.Decimal(10, 3)
+  unitPrice   Decimal @db.Decimal(12, 2)
+  totalPrice  Decimal @db.Decimal(12, 2)
+  unit        String?
+
+  invoice PurchaseInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+// ─── Expense ──────────────────────────────────────────────────────────────────
+model Expense {
+  id          String          @id @default(cuid())
+  tenantId    String
+  category    ExpenseCategory
+  description String?
+  amount      Decimal         @db.Decimal(12, 2)
+  currency    String          @default("SAR")
+  receiptUrl  String?
+  expenseDate DateTime
+  isDeleted   Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, expenseDate])
+}
+
+enum ExpenseCategory {
+  RENT
+  UTILITIES
+  FUEL
+  MAINTENANCE
+  CLEANING
+  MARKETING
+  SALARIES
+  OTHER
+}
+
+// ─── AI Insight ───────────────────────────────────────────────────────────────
+model Insight {
+  id        String      @id @default(cuid())
+  tenantId  String
+  type      InsightType
+  title     String
+  titleAr   String?
+  body      String
+  bodyAr    String?
+  severity  String      @default("info")
+  isRead    Boolean     @default(false)
+  metadata  Json?
+  createdAt DateTime    @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+}
+
+enum InsightType {
+  PROFIT_SUMMARY
+  COST_WARNING
+  SALES_TREND
+  SUPPLIER_ALERT
+  FORECAST
+  GENERAL
+}
+
+// ─── Conversation ─────────────────────────────────────────────────────────────
+model Conversation {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  title     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String
+  content        String   @db.Text
+  sources        Json?
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+// ─── Notification ─────────────────────────────────────────────────────────────
+model Notification {
+  id        String   @id @default(cuid())
+  tenantId  String
+  title     String
+  body      String
+  type      String   @default("info")
+  isRead    Boolean  @default(false)
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+}
+
+// ─── Audit Log (immutable) ────────────────────────────────────────────────────
+model AuditLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  before    Json?
+  after     Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([tenantId, createdAt])
+}
