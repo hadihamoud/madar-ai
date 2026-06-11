@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/sync-foodics",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/daily-insights",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}

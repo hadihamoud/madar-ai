@@ -6,6 +6,11 @@ import { invoicesRouter } from "./invoices";
 import { financialRouter } from "./financial";
 import { aiRouter } from "./ai";
 import { foodicsRouter } from "./foodics";
+import { suppliersRouter } from "./suppliers";
+import { notificationsRouter } from "./notifications";
+import { reportsRouter } from "./reports";
+import { profileRouter } from "./profile";
+import { auditRouter } from "./audit";
 
 export const appRouter = createTRPCRouter({
   auth: authRouter,
@@ -15,6 +20,11 @@ export const appRouter = createTRPCRouter({
   financial: financialRouter,
   ai: aiRouter,
   foodics: foodicsRouter,
+  suppliers: suppliersRouter,
+  notifications: notificationsRouter,
+  reports: reportsRouter,
+  profile: profileRouter,
+  audit: auditRouter,
 });
 
 export type AppRouter = typeof appRouter;
