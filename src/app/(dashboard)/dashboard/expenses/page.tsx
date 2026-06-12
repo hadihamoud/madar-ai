@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Paperclip, ImageIcon, X, Download } from "lucide-react";
+import { Plus, Trash2, Paperclip, ImageIcon, X, Download, BarChart2 } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -166,6 +167,12 @@ export default function ExpensesPage() {
           <p className="text-muted-foreground text-sm">اليوم: {formatSAR(totalToday)}</p>
         </div>
         <div className="flex gap-2">
+          <Link href="/dashboard/expenses/analysis">
+            <Button variant="outline" size="sm">
+              <BarChart2 className="w-4 h-4 ml-1.5" />
+              <span className="hidden sm:inline">تحليل</span>
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
