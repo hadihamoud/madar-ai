@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Upload, FileText, CheckCircle, AlertCircle, Clock, X, Search, CheckSquare } from "lucide-react";
+import { Upload, FileText, CheckCircle, AlertCircle, Clock, X, Search, CheckSquare, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -59,6 +59,13 @@ export default function InvoicesPage() {
     onSuccess: () => {
       toast.success("تم الحفظ");
       utils.invoices.list.invalidate();
+    },
+  });
+  const markPaid = trpc.invoices.markPaid.useMutation({
+    onSuccess: () => {
+      toast.success("تم تحديث حالة الدفع");
+      utils.invoices.list.invalidate();
+      utils.invoices.getById.invalidate();
     },
   });
   const batchUpdate = trpc.invoices.batchUpdate.useMutation({
@@ -405,6 +412,25 @@ export default function InvoicesPage() {
                   <span>{Math.round(invoice.ocrConfidence * 100)}%</span>
                 </div>
               )}
+
+              {/* Payment status */}
+              <div className={`flex items-center justify-between p-3 rounded-lg border ${(invoice as { isPaid?: boolean }).isPaid ? "border-green-500/30 bg-green-500/5" : "border-orange-500/20 bg-orange-500/5"}`}>
+                <div className="flex items-center gap-2">
+                  <CreditCard className={`w-4 h-4 ${(invoice as { isPaid?: boolean }).isPaid ? "text-green-500" : "text-orange-400"}`} />
+                  <span className="text-sm font-medium">
+                    {(invoice as { isPaid?: boolean }).isPaid ? "مدفوعة" : "غير مدفوعة"}
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  onClick={() => markPaid.mutate({ id: invoice.id, isPaid: !(invoice as { isPaid?: boolean }).isPaid })}
+                  disabled={markPaid.isPending}
+                >
+                  {(invoice as { isPaid?: boolean }).isPaid ? "تحديد كغير مدفوع" : "تحديد كمدفوع"}
+                </Button>
+              </div>
 
               <div className="flex gap-2 pt-2">
                 <Button

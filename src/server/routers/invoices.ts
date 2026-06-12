@@ -112,6 +112,70 @@ export const invoicesRouter = createTRPCRouter({
       });
     }),
 
+  markPaid: tenantProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        isPaid: z.boolean(),
+        paymentMethod: z.string().optional(),
+        paidAt: z.date().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, isPaid, paymentMethod, paidAt } = input;
+      return ctx.prisma.purchaseInvoice.update({
+        where: { id, tenantId: ctx.tenant.id },
+        data: {
+          isPaid,
+          paymentMethod: isPaid ? (paymentMethod ?? "cash") : null,
+          paidAt: isPaid ? (paidAt ?? new Date()) : null,
+        },
+      });
+    }),
+
+  vatSummary: tenantProcedure
+    .input(z.object({ from: z.date(), to: z.date() }))
+    .query(async ({ ctx, input }) => {
+      const [invoices, sales] = await Promise.all([
+        ctx.prisma.purchaseInvoice.findMany({
+          where: {
+            tenantId: ctx.tenant.id,
+            isDeleted: false,
+            status: "APPROVED",
+            invoiceDate: { gte: input.from, lte: input.to },
+          },
+          select: { vat: true, totalAmount: true, amount: true, supplierName: true, invoiceDate: true, invoiceNumber: true },
+        }),
+        ctx.prisma.salesTransaction.aggregate({
+          where: { tenantId: ctx.tenant.id, transactedAt: { gte: input.from, lte: input.to } },
+          _sum: { netAmount: true, tax: true },
+        }),
+      ]);
+
+      const inputVat = invoices.reduce((s, i) => s + Number(i.vat ?? 0), 0); // VAT paid on purchases
+      const outputVat = Number(sales._sum.tax ?? 0); // VAT collected on sales
+      const netVatPayable = outputVat - inputVat;
+      const totalPurchases = invoices.reduce((s, i) => s + Number(i.totalAmount ?? 0), 0);
+      const totalSales = Number(sales._sum.netAmount ?? 0);
+
+      return {
+        inputVat: Math.round(inputVat * 100) / 100,
+        outputVat: Math.round(outputVat * 100) / 100,
+        netVatPayable: Math.round(netVatPayable * 100) / 100,
+        totalPurchases: Math.round(totalPurchases * 100) / 100,
+        totalSales: Math.round(totalSales * 100) / 100,
+        invoiceCount: invoices.length,
+        invoices: invoices.map((i) => ({
+          supplierName: i.supplierName,
+          invoiceDate: i.invoiceDate,
+          invoiceNumber: i.invoiceNumber,
+          amount: Number(i.amount ?? 0),
+          vat: Number(i.vat ?? 0),
+          totalAmount: Number(i.totalAmount ?? 0),
+        })),
+      };
+    }),
+
   batchUpdate: tenantProcedure
     .input(
       z.object({

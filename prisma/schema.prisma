@@ -170,6 +170,10 @@ model PurchaseInvoice {
   ocrOutput     Json?
   ocrConfidence Float?
   notes         String?
+  isPaid        Boolean       @default(false)
+  paidAt        DateTime?
+  dueDate       DateTime?
+  paymentMethod String?
   isDeleted     Boolean       @default(false)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
