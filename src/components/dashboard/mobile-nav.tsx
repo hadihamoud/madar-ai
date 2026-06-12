@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Receipt, ShoppingCart, MessageSquare,
-  Lightbulb, Settings, LogOut, Menu, X, Users, BarChart3, Bell, UserCircle, TrendingUp
+  Lightbulb, Settings, LogOut, Menu, X, Users, BarChart3, Bell, UserCircle, TrendingUp, FileSpreadsheet
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ const navItems = [
   { href: "/dashboard/expenses", label: "المصروفات", icon: Receipt },
   { href: "/dashboard/invoices", label: "الفواتير", icon: ShoppingCart },
   { href: "/dashboard/suppliers", label: "الموردون", icon: Users },
+  { href: "/dashboard/pnl", label: "قائمة الدخل", icon: FileSpreadsheet },
   { href: "/dashboard/reports", label: "التقارير", icon: BarChart3 },
   { href: "/dashboard/insights", label: "التحليلات", icon: Lightbulb },
   { href: "/dashboard/assistant", label: "المساعد الذكي", icon: MessageSquare },
