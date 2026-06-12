@@ -76,6 +76,7 @@ model Restaurant {
   logoUrl               String?
   monthlyRevenueTarget  Decimal?
   monthlyProfitTarget   Decimal?
+  categoryBudgets       Json?
   foodicsConnected Boolean   @default(false)
   foodicsToken     String?
   foodicsAccountId String?
@@ -214,9 +215,10 @@ model Expense {
   description String?
   amount      Decimal         @db.Decimal(12, 2)
   currency    String          @default("SAR")
-  receiptUrl  String?
-  expenseDate DateTime
-  isDeleted   Boolean         @default(false)
+  receiptUrl   String?
+  expenseDate  DateTime
+  isRecurring  Boolean         @default(false)
+  isDeleted    Boolean         @default(false)
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 

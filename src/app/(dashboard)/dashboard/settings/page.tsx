@@ -53,9 +53,14 @@ function SettingsContent() {
     currency: "SAR",
   });
   const [targets, setTargets] = useState({ monthlyRevenueTarget: "", monthlyProfitTarget: "" });
+  const [budgets, setBudgets] = useState<Record<string, string>>({});
 
   const setTargetsMutation = trpc.restaurant.setTargets.useMutation({
     onSuccess: () => { toast.success("تم حفظ الأهداف"); utils.restaurant.get.invalidate(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const setCategoryBudgets = trpc.restaurant.setCategoryBudgets.useMutation({
+    onSuccess: () => { toast.success("تم حفظ ميزانيات الفئات"); utils.restaurant.get.invalidate(); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -74,6 +79,10 @@ function SettingsContent() {
         monthlyRevenueTarget: restaurant.monthlyRevenueTarget ? String(restaurant.monthlyRevenueTarget) : "",
         monthlyProfitTarget: restaurant.monthlyProfitTarget ? String(restaurant.monthlyProfitTarget) : "",
       });
+      if (restaurant.categoryBudgets && typeof restaurant.categoryBudgets === "object") {
+        const cb = restaurant.categoryBudgets as Record<string, number>;
+        setBudgets(Object.fromEntries(Object.entries(cb).map(([k, v]) => [k, String(v)])));
+      }
     }
   }, [restaurant]);
 
@@ -225,6 +234,51 @@ function SettingsContent() {
             }
           >
             {setTargetsMutation.isPending ? "جاري الحفظ..." : "حفظ الأهداف"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Category Budgets */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="w-5 h-5" />
+            ميزانيات فئات المصروفات
+          </CardTitle>
+          <CardDescription>حدد حداً أقصى شهرياً لكل فئة من فئات المصروفات</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            {(["RENT","UTILITIES","FUEL","MAINTENANCE","CLEANING","MARKETING","SALARIES","OTHER"] as const).map((cat) => {
+              const LABELS: Record<string, string> = {
+                RENT: "إيجار", UTILITIES: "مرافق", FUEL: "وقود",
+                MAINTENANCE: "صيانة", CLEANING: "نظافة", MARKETING: "تسويق",
+                SALARIES: "رواتب", OTHER: "أخرى",
+              };
+              return (
+                <div key={cat} className="space-y-1">
+                  <Label className="text-xs">{LABELS[cat]}</Label>
+                  <Input
+                    type="number"
+                    dir="ltr"
+                    placeholder="بلا حد"
+                    value={budgets[cat] ?? ""}
+                    onChange={(e) => setBudgets((b) => ({ ...b, [cat]: e.target.value }))}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <Button
+            disabled={setCategoryBudgets.isPending}
+            onClick={() => {
+              const clean = Object.fromEntries(
+                Object.entries(budgets).filter(([, v]) => v && Number(v) > 0).map(([k, v]) => [k, Number(v)])
+              );
+              setCategoryBudgets.mutate({ budgets: clean });
+            }}
+          >
+            {setCategoryBudgets.isPending ? "جاري الحفظ..." : "حفظ الميزانيات"}
           </Button>
         </CardContent>
       </Card>

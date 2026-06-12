@@ -9,6 +9,15 @@ export const restaurantRouter = createTRPCRouter({
     });
   }),
 
+  setCategoryBudgets: tenantProcedure
+    .input(z.object({ budgets: z.record(z.string(), z.number()) }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.restaurant.update({
+        where: { tenantId: ctx.tenant.id },
+        data: { categoryBudgets: input.budgets },
+      });
+    }),
+
   setTargets: tenantProcedure
     .input(
       z.object({

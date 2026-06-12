@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Paperclip, ImageIcon, X, Download, BarChart2 } from "lucide-react";
+import { Plus, Trash2, Paperclip, ImageIcon, X, Download, BarChart2, RefreshCw, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
@@ -64,7 +64,11 @@ export default function ExpensesPage() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const { data: restaurant } = trpc.restaurant.get.useQuery(undefined, { refetchOnWindowFocus: false });
+  const categoryBudgets = (restaurant?.categoryBudgets ?? {}) as Record<string, number>;
 
   const utils = trpc.useUtils();
   const { data, isLoading } = trpc.expenses.list.useQuery({ limit: 100 });
@@ -89,6 +93,7 @@ export default function ExpensesPage() {
     setForm({ category: "OTHER", description: "", amount: "", expenseDate: format(new Date(), "yyyy-MM-dd") });
     setReceiptFile(null);
     setReceiptPreview(null);
+    setIsRecurring(false);
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -138,6 +143,7 @@ export default function ExpensesPage() {
       amount: Number(form.amount),
       expenseDate: new Date(form.expenseDate),
       receiptUrl,
+      isRecurring,
     });
   }
 
@@ -155,6 +161,19 @@ export default function ExpensesPage() {
     label: CATEGORIES[k as ExpenseCategory],
     total: data?.items.filter((e) => e.category === k).reduce((s, e) => s + Number(e.amount), 0) ?? 0,
   })).filter((c) => c.total > 0).sort((a, b) => b.total - a.total);
+
+  // Categories that exceeded their budget this month
+  const budgetAlerts = Object.entries(categoryBudgets).filter(([cat, limit]) => {
+    const spent = data?.items
+      .filter((e) => e.category === cat && format(new Date(e.expenseDate), "yyyy-MM") === format(new Date(), "yyyy-MM"))
+      .reduce((s, e) => s + Number(e.amount), 0) ?? 0;
+    return spent > limit;
+  }).map(([cat, limit]) => {
+    const spent = data?.items
+      .filter((e) => e.category === cat && format(new Date(e.expenseDate), "yyyy-MM") === format(new Date(), "yyyy-MM"))
+      .reduce((s, e) => s + Number(e.amount), 0) ?? 0;
+    return { cat, label: CATEGORIES[cat as ExpenseCategory] ?? cat, spent, limit, pct: Math.round((spent / limit) * 100) };
+  });
 
   const isPending = create.isPending || uploadingReceipt;
 
@@ -289,6 +308,20 @@ export default function ExpensesPage() {
                   )}
                 </div>
 
+                <div className="flex items-center gap-2">
+                  <input
+                    id="recurring"
+                    type="checkbox"
+                    checked={isRecurring}
+                    onChange={(e) => setIsRecurring(e.target.checked)}
+                    className="w-4 h-4 accent-primary"
+                  />
+                  <label htmlFor="recurring" className="text-sm flex items-center gap-1.5 cursor-pointer">
+                    <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
+                    مصروف متكرر شهرياً
+                  </label>
+                </div>
+
                 <Button type="submit" className="w-full" disabled={isPending}>
                   {uploadingReceipt ? "جاري رفع الإيصال..." : create.isPending ? "جاري الحفظ..." : "حفظ المصروف"}
                 </Button>
@@ -297,6 +330,27 @@ export default function ExpensesPage() {
           </Dialog>
         </div>
       </div>
+
+      {/* Budget alerts */}
+      {budgetAlerts.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium flex items-center gap-2 text-yellow-600">
+            <AlertTriangle className="w-4 h-4" />
+            تجاوز ميزانية ({budgetAlerts.length} فئة)
+          </p>
+          {budgetAlerts.map((a) => (
+            <div key={a.cat} className="flex items-center gap-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg px-3 py-2 text-sm">
+              <span className="font-medium">{a.label}</span>
+              <span className="text-muted-foreground text-xs flex-1">
+                {formatSAR(a.spent)} / {formatSAR(a.limit)}
+              </span>
+              <Badge variant="outline" className="text-yellow-600 border-yellow-500/50 text-xs">
+                {a.pct}%
+              </Badge>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Category summary chips */}
       {byCategory.length > 0 && (
@@ -341,7 +395,12 @@ export default function ExpensesPage() {
               <div className="flex items-center gap-3 min-w-0">
                 <Badge variant="outline" className="flex-shrink-0">{CATEGORIES[expense.category as ExpenseCategory]}</Badge>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{expense.description || CATEGORIES[expense.category as ExpenseCategory]}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-medium truncate">{expense.description || CATEGORIES[expense.category as ExpenseCategory]}</p>
+                    {(expense as { isRecurring?: boolean }).isRecurring && (
+                      <RefreshCw className="w-3 h-3 text-primary flex-shrink-0" title="مصروف متكرر" />
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     {format(new Date(expense.expenseDate), "d MMMM yyyy", { locale: ar })}
                   </p>

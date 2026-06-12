@@ -50,6 +50,7 @@ export const expensesRouter = createTRPCRouter({
         currency: z.string().default("SAR"),
         expenseDate: z.date(),
         receiptUrl: z.string().url().optional(),
+        isRecurring: z.boolean().default(false),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -77,6 +78,7 @@ export const expensesRouter = createTRPCRouter({
         description: z.string().optional(),
         amount: z.number().positive().optional(),
         expenseDate: z.date().optional(),
+        isRecurring: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
