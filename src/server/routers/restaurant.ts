@@ -9,6 +9,23 @@ export const restaurantRouter = createTRPCRouter({
     });
   }),
 
+  setTargets: tenantProcedure
+    .input(
+      z.object({
+        monthlyRevenueTarget: z.number().positive().optional(),
+        monthlyProfitTarget: z.number().positive().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.restaurant.update({
+        where: { tenantId: ctx.tenant.id },
+        data: {
+          monthlyRevenueTarget: input.monthlyRevenueTarget,
+          monthlyProfitTarget: input.monthlyProfitTarget,
+        },
+      });
+    }),
+
   upsert: tenantProcedure
     .input(
       z.object({
@@ -19,6 +36,8 @@ export const restaurantRouter = createTRPCRouter({
         city: z.string().optional(),
         timezone: z.string().default("Asia/Riyadh"),
         currency: z.string().default("SAR"),
+        monthlyRevenueTarget: z.number().positive().optional(),
+        monthlyProfitTarget: z.number().positive().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {

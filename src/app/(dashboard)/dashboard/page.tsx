@@ -34,6 +34,7 @@ export default function DashboardPage() {
   const { data: recentInvoices } = trpc.invoices.list.useQuery({ limit: 4 });
   const { data: recentExpenses } = trpc.expenses.list.useQuery({ limit: 4 });
   const { data: onboarding } = trpc.profile.onboardingStatus.useQuery();
+  const { data: restaurant } = trpc.restaurant.get.useQuery(undefined, { refetchOnWindowFocus: false });
   const generateInsights = trpc.ai.generateInsights.useMutation();
 
   // Calculate day-over-day change
@@ -190,6 +191,61 @@ export default function DashboardPage() {
                   </p>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Monthly Goals Progress */}
+      {restaurant && (restaurant.monthlyRevenueTarget || restaurant.monthlyProfitTarget) && monthlySummary && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="font-medium text-sm flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-primary" />
+                الأهداف الشهرية
+              </p>
+              <Link href="/dashboard/settings">
+                <Button variant="ghost" size="sm" className="text-xs h-7">تعديل <ChevronLeft className="w-3 h-3 mr-1" /></Button>
+              </Link>
+            </div>
+            <div className="space-y-3">
+              {restaurant.monthlyRevenueTarget && (
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-muted-foreground">المبيعات</span>
+                    <span>
+                      {formatSAR(monthlySummary.totalSales)} / {formatSAR(Number(restaurant.monthlyRevenueTarget))}
+                      {" · "}
+                      <span className={monthlySummary.totalSales >= Number(restaurant.monthlyRevenueTarget) ? "text-green-500 font-medium" : ""}>
+                        {Math.min(100, Math.round((monthlySummary.totalSales / Number(restaurant.monthlyRevenueTarget)) * 100))}%
+                      </span>
+                    </span>
+                  </div>
+                  <Progress
+                    value={Math.min(100, (monthlySummary.totalSales / Number(restaurant.monthlyRevenueTarget)) * 100)}
+                    className="h-2"
+                  />
+                </div>
+              )}
+              {restaurant.monthlyProfitTarget && (
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-muted-foreground">الربح</span>
+                    <span>
+                      {formatSAR(monthlySummary.grossProfit)} / {formatSAR(Number(restaurant.monthlyProfitTarget))}
+                      {" · "}
+                      <span className={monthlySummary.grossProfit >= Number(restaurant.monthlyProfitTarget) ? "text-green-500 font-medium" : ""}>
+                        {Math.min(100, Math.max(0, Math.round((monthlySummary.grossProfit / Number(restaurant.monthlyProfitTarget)) * 100)))}%
+                      </span>
+                    </span>
+                  </div>
+                  <Progress
+                    value={Math.min(100, Math.max(0, (monthlySummary.grossProfit / Number(restaurant.monthlyProfitTarget)) * 100))}
+                    className="h-2"
+                  />
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

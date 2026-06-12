@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { subDays, startOfMonth, endOfMonth, format } from "date-fns";
 import { ar } from "date-fns/locale";
-import { Copy, Check, TrendingUp, TrendingDown, DollarSign, ShoppingCart } from "lucide-react";
+import { Copy, Check, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Download } from "lucide-react";
 import { toast } from "sonner";
 
 function formatSAR(n: number) {
@@ -26,6 +26,21 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const PIE_COLORS = ["#6366f1", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#64748b"];
+
+function exportDailyCSV(data: Array<{ label: string; sales: number; costs: number; profit: number }>, period: string) {
+  const rows = [
+    ["التاريخ", "المبيعات (ريال)", "التكاليف (ريال)", "الربح (ريال)"],
+    ...data.map((d) => [d.label, d.sales.toFixed(2), d.costs.toFixed(2), d.profit.toFixed(2)]),
+  ];
+  const csv = "﻿" + rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `report-${period}-${format(new Date(), "yyyy-MM-dd")}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function ReportsPage() {
   const [period, setPeriod] = useState<"7d" | "30d" | "month">("30d");
@@ -70,12 +85,21 @@ export default function ReportsPage() {
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">التقارير</h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {(["7d", "30d", "month"] as const).map(p => (
             <Button key={p} variant={period === p ? "default" : "outline"} size="sm" onClick={() => setPeriod(p)}>
               {p === "7d" ? "7 أيام" : p === "30d" ? "30 يوم" : "هذا الشهر"}
             </Button>
           ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => daily && exportDailyCSV(daily, period)}
+            disabled={!daily?.length}
+          >
+            <Download className="w-3.5 h-3.5 ml-1.5" />
+            تصدير
+          </Button>
         </div>
       </div>
 

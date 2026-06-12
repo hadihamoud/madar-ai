@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, RefreshCw, Plug, Unplug } from "lucide-react";
+import { CheckCircle, XCircle, RefreshCw, Plug, Unplug, Target } from "lucide-react";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
@@ -52,6 +52,12 @@ function SettingsContent() {
     timezone: "Asia/Riyadh",
     currency: "SAR",
   });
+  const [targets, setTargets] = useState({ monthlyRevenueTarget: "", monthlyProfitTarget: "" });
+
+  const setTargetsMutation = trpc.restaurant.setTargets.useMutation({
+    onSuccess: () => { toast.success("تم حفظ الأهداف"); utils.restaurant.get.invalidate(); },
+    onError: (e) => toast.error(e.message),
+  });
 
   useEffect(() => {
     if (restaurant) {
@@ -63,6 +69,10 @@ function SettingsContent() {
         city: restaurant.city ?? "",
         timezone: restaurant.timezone ?? "Asia/Riyadh",
         currency: restaurant.currency ?? "SAR",
+      });
+      setTargets({
+        monthlyRevenueTarget: restaurant.monthlyRevenueTarget ? String(restaurant.monthlyRevenueTarget) : "",
+        monthlyProfitTarget: restaurant.monthlyProfitTarget ? String(restaurant.monthlyProfitTarget) : "",
       });
     }
   }, [restaurant]);
@@ -169,6 +179,53 @@ function SettingsContent() {
               {upsert.isPending ? "جاري الحفظ..." : "حفظ التغييرات"}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Monthly Targets */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="w-5 h-5" />
+            الأهداف الشهرية
+          </CardTitle>
+          <CardDescription>حدد أهداف المبيعات والربح لتتبع التقدم في لوحة التحكم</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>هدف المبيعات الشهرية (ريال)</Label>
+              <Input
+                type="number"
+                dir="ltr"
+                placeholder="مثال: 100000"
+                value={targets.monthlyRevenueTarget}
+                onChange={(e) => setTargets((t) => ({ ...t, monthlyRevenueTarget: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>هدف صافي الربح الشهري (ريال)</Label>
+              <Input
+                type="number"
+                dir="ltr"
+                placeholder="مثال: 20000"
+                value={targets.monthlyProfitTarget}
+                onChange={(e) => setTargets((t) => ({ ...t, monthlyProfitTarget: e.target.value }))}
+              />
+            </div>
+          </div>
+          <Button
+            className="mt-4"
+            disabled={setTargetsMutation.isPending}
+            onClick={() =>
+              setTargetsMutation.mutate({
+                monthlyRevenueTarget: targets.monthlyRevenueTarget ? Number(targets.monthlyRevenueTarget) : undefined,
+                monthlyProfitTarget: targets.monthlyProfitTarget ? Number(targets.monthlyProfitTarget) : undefined,
+              })
+            }
+          >
+            {setTargetsMutation.isPending ? "جاري الحفظ..." : "حفظ الأهداف"}
+          </Button>
         </CardContent>
       </Card>
 

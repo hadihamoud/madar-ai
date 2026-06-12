@@ -73,7 +73,9 @@ model Restaurant {
   city             String?
   timezone         String    @default("Asia/Riyadh")
   currency         String    @default("SAR")
-  logoUrl          String?
+  logoUrl               String?
+  monthlyRevenueTarget  Decimal?
+  monthlyProfitTarget   Decimal?
   foodicsConnected Boolean   @default(false)
   foodicsToken     String?
   foodicsAccountId String?
