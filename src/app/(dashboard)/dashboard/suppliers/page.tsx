@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Users, TrendingUp, Phone, Mail, Trash2, Edit } from "lucide-react";
+import { Plus, Search, Users, TrendingUp, Phone, Mail, Trash2, Edit, BookOpen } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { format, subDays } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -65,10 +66,18 @@ export default function SuppliersPage() {
           <h1 className="text-2xl font-bold">الموردون</h1>
           <p className="text-muted-foreground text-sm">{active.length} مورد نشط</p>
         </div>
-        <Button onClick={() => { setForm(EMPTY_FORM); setCreateOpen(true); }}>
-          <Plus className="w-4 h-4 ml-2" />
-          مورد جديد
-        </Button>
+        <div className="flex gap-2">
+          <Link href="/dashboard/suppliers/ledger">
+            <Button variant="outline" size="sm">
+              <BookOpen className="w-4 h-4 ml-1.5" />
+              دفتر الحسابات
+            </Button>
+          </Link>
+          <Button onClick={() => { setForm(EMPTY_FORM); setCreateOpen(true); }}>
+            <Plus className="w-4 h-4 ml-2" />
+            مورد جديد
+          </Button>
+        </div>
       </div>
 
       {/* Top suppliers spending */}

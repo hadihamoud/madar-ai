@@ -81,6 +81,40 @@ export const suppliersRouter = createTRPCRouter({
       });
     }),
 
+  ledger: tenantProcedure
+    .query(async ({ ctx }) => {
+      const suppliers = await ctx.prisma.supplier.findMany({
+        where: { tenantId: ctx.tenant.id },
+        include: {
+          invoices: {
+            where: { isDeleted: false, status: "APPROVED" },
+            select: { totalAmount: true, isPaid: true, invoiceDate: true, paidAt: true },
+          },
+        },
+        orderBy: { name: "asc" },
+      });
+
+      return suppliers.map((s) => {
+        const totalInvoiced = s.invoices.reduce((sum, i) => sum + Number(i.totalAmount ?? 0), 0);
+        const totalPaid = s.invoices.filter((i) => i.isPaid).reduce((sum, i) => sum + Number(i.totalAmount ?? 0), 0);
+        const outstanding = totalInvoiced - totalPaid;
+        const lastInvoice = s.invoices.sort((a, b) =>
+          (b.invoiceDate?.getTime() ?? 0) - (a.invoiceDate?.getTime() ?? 0)
+        )[0];
+        return {
+          id: s.id,
+          name: s.name,
+          phone: s.phone,
+          isActive: s.isActive,
+          invoiceCount: s.invoices.length,
+          totalInvoiced: Math.round(totalInvoiced * 100) / 100,
+          totalPaid: Math.round(totalPaid * 100) / 100,
+          outstanding: Math.round(outstanding * 100) / 100,
+          lastInvoiceDate: lastInvoice?.invoiceDate ?? null,
+        };
+      });
+    }),
+
   stats: tenantProcedure
     .input(z.object({ from: z.date(), to: z.date() }))
     .query(async ({ ctx, input }) => {
