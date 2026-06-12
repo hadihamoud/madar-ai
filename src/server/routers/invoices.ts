@@ -112,6 +112,21 @@ export const invoicesRouter = createTRPCRouter({
       });
     }),
 
+  batchUpdate: tenantProcedure
+    .input(
+      z.object({
+        ids: z.array(z.string()).min(1),
+        status: z.enum(["APPROVED", "REJECTED"]),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.prisma.purchaseInvoice.updateMany({
+        where: { id: { in: input.ids }, tenantId: ctx.tenant.id, isDeleted: false },
+        data: { status: input.status },
+      });
+      return { updated: result.count };
+    }),
+
   summary: tenantProcedure
     .input(z.object({ from: z.date(), to: z.date() }))
     .query(async ({ ctx, input }) => {
