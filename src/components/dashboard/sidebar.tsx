@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Receipt, ShoppingCart, MessageSquare,
-  Lightbulb, Settings, LogOut, Users, BarChart3, Bell, UserCircle
+  Lightbulb, Settings, LogOut, Users, BarChart3, Bell, UserCircle, TrendingUp
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -13,6 +13,7 @@ import { trpc } from "@/lib/trpc/client";
 
 const navItems = [
   { href: "/dashboard", label: "الرئيسية", icon: LayoutDashboard },
+  { href: "/dashboard/sales", label: "المبيعات", icon: TrendingUp },
   { href: "/dashboard/expenses", label: "المصروفات", icon: Receipt },
   { href: "/dashboard/invoices", label: "الفواتير", icon: ShoppingCart },
   { href: "/dashboard/suppliers", label: "الموردون", icon: Users },
