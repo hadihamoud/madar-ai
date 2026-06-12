@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Upload, FileText, CheckCircle, AlertCircle, Clock, X, Search, CheckSquare, CreditCard } from "lucide-react";
+import { InvoiceCreateDialog } from "@/components/dashboard/invoice-create-dialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -157,6 +158,7 @@ export default function InvoicesPage() {
             موافق عليها: {formatSAR(totalApproved)}
           </p>
         </div>
+        <InvoiceCreateDialog onCreated={() => utils.invoices.list.invalidate()} />
       </div>
 
       {/* Upload Zone */}
