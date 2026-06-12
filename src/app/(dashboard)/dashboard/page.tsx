@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,19 +14,22 @@ import {
 import Link from "next/link";
 import { format, subDays, startOfMonth } from "date-fns";
 import { ar } from "date-fns/locale";
+import { BranchSelector } from "@/components/dashboard/branch-selector";
 
 function formatSAR(amount: number) {
   return new Intl.NumberFormat("ar-SA", { style: "currency", currency: "SAR", maximumFractionDigits: 0 }).format(amount);
 }
 
 export default function DashboardPage() {
+  const [branchId, setBranchId] = useState<string | null>(null);
   const today = new Date();
   const yesterday = subDays(today, 1);
   const monthStart = startOfMonth(today);
 
-  const { data: todaySummary, isLoading } = trpc.financial.dailySummary.useQuery({ date: today });
-  const { data: yesterdaySummary } = trpc.financial.dailySummary.useQuery({ date: yesterday });
-  const { data: monthlySummary } = trpc.financial.monthlySummary.useQuery({ month: today });
+  const bFilter = branchId ? { branchId } : {};
+  const { data: todaySummary, isLoading } = trpc.financial.dailySummary.useQuery({ date: today, ...bFilter });
+  const { data: yesterdaySummary } = trpc.financial.dailySummary.useQuery({ date: yesterday, ...bFilter });
+  const { data: monthlySummary } = trpc.financial.monthlySummary.useQuery({ month: today, ...bFilter });
   const { data: insights } = trpc.ai.listInsights.useQuery({ limit: 3, unreadOnly: false });
   const { data: recentInvoices } = trpc.invoices.list.useQuery({ limit: 4 });
   const { data: recentExpenses } = trpc.expenses.list.useQuery({ limit: 4 });
@@ -48,17 +52,20 @@ export default function DashboardPage() {
   return (
     <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">لوحة التحكم</h1>
           <p className="text-muted-foreground text-sm">
             {format(today, "EEEE، d MMMM yyyy", { locale: ar })}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => generateInsights.mutate()} disabled={generateInsights.isPending}>
-          <Lightbulb className="w-4 h-4 ml-1.5" />
-          <span className="hidden sm:inline">{generateInsights.isPending ? "جاري..." : "تحديث التحليلات"}</span>
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <BranchSelector value={branchId} onChange={setBranchId} />
+          <Button variant="outline" size="sm" onClick={() => generateInsights.mutate()} disabled={generateInsights.isPending}>
+            <Lightbulb className="w-4 h-4 ml-1.5" />
+            <span className="hidden sm:inline">{generateInsights.isPending ? "جاري..." : "تحديث التحليلات"}</span>
+          </Button>
+        </div>
       </div>
 
       {/* Onboarding prompt */}

@@ -4,16 +4,17 @@ import { startOfDay, endOfDay, startOfMonth, endOfMonth } from "date-fns";
 
 export const financialRouter = createTRPCRouter({
   dailySummary: tenantProcedure
-    .input(z.object({ date: z.date().optional() }))
+    .input(z.object({ date: z.date().optional(), branchId: z.string().optional() }))
     .query(async ({ ctx, input }) => {
       const date = input.date ?? new Date();
       const from = startOfDay(date);
       const to = endOfDay(date);
       const tenantId = ctx.tenant.id;
+      const branchFilter = input.branchId ? { branchId: input.branchId } : {};
 
       const [sales, expenses, invoices] = await Promise.all([
         ctx.prisma.salesTransaction.aggregate({
-          where: { tenantId, transactedAt: { gte: from, lte: to } },
+          where: { tenantId, ...branchFilter, transactedAt: { gte: from, lte: to } },
           _sum: { netAmount: true },
           _count: true,
         }),
@@ -52,16 +53,17 @@ export const financialRouter = createTRPCRouter({
     }),
 
   monthlySummary: tenantProcedure
-    .input(z.object({ month: z.date().optional() }))
+    .input(z.object({ month: z.date().optional(), branchId: z.string().optional() }))
     .query(async ({ ctx, input }) => {
       const month = input.month ?? new Date();
       const from = startOfMonth(month);
       const to = endOfMonth(month);
       const tenantId = ctx.tenant.id;
+      const branchFilter = input.branchId ? { branchId: input.branchId } : {};
 
       const [sales, expenses, invoices] = await Promise.all([
         ctx.prisma.salesTransaction.aggregate({
-          where: { tenantId, transactedAt: { gte: from, lte: to } },
+          where: { tenantId, ...branchFilter, transactedAt: { gte: from, lte: to } },
           _sum: { netAmount: true },
           _count: true,
         }),
