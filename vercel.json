@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/sync-foodics",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 4 * * *"
     },
     {
       "path": "/api/cron/daily-insights",
