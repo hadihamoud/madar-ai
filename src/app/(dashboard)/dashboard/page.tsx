@@ -31,6 +31,7 @@ export default function DashboardPage() {
   const { data: yesterdaySummary } = trpc.financial.dailySummary.useQuery({ date: yesterday, ...bFilter });
   const { data: monthlySummary } = trpc.financial.monthlySummary.useQuery({ month: today, ...bFilter });
   const { data: insights } = trpc.ai.listInsights.useQuery({ limit: 3, unreadOnly: false });
+  const { data: weekdayData } = trpc.financial.weekdayBreakdown.useQuery({ days: 90 }, { refetchOnWindowFocus: false });
   const { data: recentInvoices } = trpc.invoices.list.useQuery({ limit: 4 });
   const { data: recentExpenses } = trpc.expenses.list.useQuery({ limit: 4 });
   const { data: onboarding } = trpc.profile.onboardingStatus.useQuery();
@@ -303,6 +304,38 @@ export default function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      {/* Weekday Sales Heatmap */}
+      {weekdayData && weekdayData.some((d) => d.totalSales > 0) && (
+        <Card>
+          <CardContent className="p-4">
+            <p className="font-medium text-sm mb-3 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-primary" />
+              أيام الذروة (آخر 90 يوم)
+            </p>
+            <div className="grid grid-cols-7 gap-1">
+              {weekdayData.map((d) => {
+                const max = Math.max(...weekdayData.map((x) => x.avgSales));
+                const intensity = max > 0 ? d.avgSales / max : 0;
+                return (
+                  <div key={d.dayIdx} className="flex flex-col items-center gap-1">
+                    <div
+                      className="w-full rounded-md transition-all"
+                      style={{
+                        height: 40,
+                        background: `rgba(99,102,241,${Math.max(0.1, intensity)})`,
+                      }}
+                      title={`${d.day}: ${formatSAR(d.avgSales)}`}
+                    />
+                    <span className="text-[10px] text-muted-foreground text-center leading-tight">{d.day.slice(0, 3)}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 text-center">متوسط المبيعات اليومي لكل يوم من أيام الأسبوع</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recent Activity */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

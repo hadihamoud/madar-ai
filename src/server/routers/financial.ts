@@ -162,6 +162,39 @@ export const financialRouter = createTRPCRouter({
       };
     }),
 
+  weekdayBreakdown: tenantProcedure
+    .input(z.object({ days: z.number().default(90) }))
+    .query(async ({ ctx, input }) => {
+      const from = startOfDay(subDays(new Date(), input.days));
+      const transactions = await ctx.prisma.salesTransaction.findMany({
+        where: { tenantId: ctx.tenant.id, transactedAt: { gte: from } },
+        select: { transactedAt: true, netAmount: true },
+      });
+
+      // 0=Sun,1=Mon,...,6=Sat
+      const DAY_NAMES = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+      const byDay = Array.from({ length: 7 }, (_, i) => ({
+        day: DAY_NAMES[i],
+        dayIdx: i,
+        totalSales: 0,
+        count: 0,
+      }));
+
+      for (const t of transactions) {
+        const d = new Date(t.transactedAt).getDay();
+        byDay[d].totalSales += Number(t.netAmount);
+        byDay[d].count += 1;
+      }
+
+      // Avg daily sales per weekday
+      const weeksSpanned = Math.max(1, Math.ceil(input.days / 7));
+      return byDay.map((d) => ({
+        ...d,
+        avgSales: Math.round(d.totalSales / weeksSpanned),
+        totalSales: Math.round(d.totalSales),
+      }));
+    }),
+
   branchComparison: tenantProcedure
     .input(z.object({ from: z.date(), to: z.date() }))
     .query(async ({ ctx, input }) => {

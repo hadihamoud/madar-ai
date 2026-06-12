@@ -55,6 +55,7 @@ export default function ReportsPage() {
   const { data: topSup } = trpc.reports.topSuppliers.useQuery({ from, to, limit: 5 });
   const { data: whatsapp } = trpc.reports.whatsappDailySummary.useQuery({ date: now });
   const { data: monthly } = trpc.financial.monthlySummary.useQuery({ month: now });
+  const { data: branchData } = trpc.financial.branchComparison.useQuery({ from, to });
 
   async function copyWhatsApp() {
     if (!whatsapp?.message) return;
@@ -129,7 +130,8 @@ export default function ReportsPage() {
           <TabsTrigger value="profit">الأرباح</TabsTrigger>
           <TabsTrigger value="expenses">المصروفات</TabsTrigger>
           <TabsTrigger value="suppliers">الموردون</TabsTrigger>
-          <TabsTrigger value="whatsapp">تقرير واتساب</TabsTrigger>
+          {branchData && branchData.length > 1 && <TabsTrigger value="branches">الفروع</TabsTrigger>}
+        <TabsTrigger value="whatsapp">تقرير واتساب</TabsTrigger>
         </TabsList>
 
         {/* Sales Chart */}
@@ -231,6 +233,39 @@ export default function ReportsPage() {
                 );
               })}
               {!topSup?.length && <p className="text-muted-foreground text-sm text-center py-4">لا توجد فواتير موافق عليها في هذه الفترة</p>}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Branch Comparison */}
+        <TabsContent value="branches" className="mt-4">
+          <Card>
+            <CardHeader><CardTitle className="text-base">مقارنة أداء الفروع</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              {branchData?.map((branch, i) => {
+                const maxSales = Math.max(...(branchData?.map((b) => b.totalSales) ?? [1]));
+                const pct = maxSales > 0 ? (branch.totalSales / maxSales) * 100 : 0;
+                return (
+                  <div key={branch.id} className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium">{branch.name}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-muted-foreground">{branch.orderCount} طلب</span>
+                        <span className="font-semibold">{formatSAR(branch.totalSales)}</span>
+                      </div>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+              {!branchData?.length && (
+                <p className="text-muted-foreground text-sm text-center py-4">لا توجد بيانات فروع</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
